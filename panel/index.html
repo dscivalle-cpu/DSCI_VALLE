@@ -228,7 +228,7 @@
 <body>
 
 <!-- ===================== LOGIN ===================== -->
-<div id="login-screen" style="display:none;">
+<div id="login-screen">
   <div class="login-card">
     <h1>Panel de Seguimiento</h1>
     <p class="sub">Programa de Sustitución de Cultivos · Acceso autorizado</p>
@@ -242,9 +242,9 @@
 </div>
 
 <!-- ===================== APP ===================== -->
-<div id="app" style="display:block;">
+<div id="app">
   <header class="topbar">
-    <h1>Panel de Seguimiento — Sustitución de Cultivos <span style="background:#e0a200;color:#000;font-size:0.6rem;padding:2px 8px;border-radius:10px;vertical-align:middle;">MODO PRUEBA · SIN LOGIN</span></h1>
+    <h1>Panel de Seguimiento — Sustitución de Cultivos</h1>
     <div class="user-box">
       <span id="user-email"></span>
       <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
@@ -574,13 +574,10 @@ document.getElementById("btn-export-cert").addEventListener("click", () => {
   exportarExcel(filas, "Certificaciones", "certificaciones_ica.xlsx");
 });
 
-// ---------- TEMPORAL: arranque sin login (modo prueba) ----------
+// ---------- Arranque: si ya hay sesion activa, entra directo ----------
 (async () => {
-  document.getElementById("login-screen").style.display = "none";
-  document.getElementById("app").style.display = "block";
-  document.getElementById("user-email").textContent = "modo prueba (sin login)";
-  initMapa();
-  await cargarDatos();
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await iniciarApp();
 })();
 </script>
 </body>
