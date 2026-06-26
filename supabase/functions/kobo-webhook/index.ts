@@ -179,6 +179,18 @@ function toNumberOrNull(value: unknown): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+/**
+ * Verifica que una respuesta de Supabase no sea undefined (lo que indicaria
+ * un cliente mal construido) y que no traiga error. Devuelve siempre un
+ * objeto {data, error} valido o lanza un mensaje claro.
+ */
+function checkResp(resp: any, contexto: string): { data: any; error: any } {
+  if (resp === undefined || resp === null) {
+    throw new Error(`Respuesta vacia de Supabase en: ${contexto} (cliente mal inicializado?)`);
+  }
+  return resp;
+}
+
 function toBoolOrNull(value: unknown): boolean | null {
   if (value === "si") return true;
   if (value === "no") return false;
@@ -253,16 +265,23 @@ async function handleOrganizaciones(supabase: SupabaseClient, body: any) {
   };
 
   const codigo = body["codigo_organizacion"];
-  const { data: existing } = await supabase
-    .from("organizaciones").select("id").eq("codigo_organizacion", codigo).maybeSingle();
+  const { data: existing } = checkResp(
+    await supabase.from("organizaciones").select("id").eq("codigo_organizacion", codigo).maybeSingle(),
+    "buscar organizacion existente",
+  );
 
   if (existing) {
-    const { error } = await supabase.from("organizaciones").update(registro).eq("id", existing.id);
+    const { error } = checkResp(
+      await supabase.from("organizaciones").update(registro).eq("id", existing.id),
+      "actualizar organizacion",
+    );
     if (error) throw error;
     return { accion: "actualizada", codigo_organizacion: codigo };
   } else {
-    const { error } = await supabase.from("organizaciones")
-      .insert({ ...registro, codigo_organizacion: codigo });
+    const { error } = checkResp(
+      await supabase.from("organizaciones").insert({ ...registro, codigo_organizacion: codigo }),
+      "insertar organizacion",
+    );
     if (error) throw error;
     return { accion: "creada", codigo_organizacion: codigo };
   }
@@ -455,6 +474,19 @@ Deno.serve(async (req: Request) => {
   if (WEBHOOK_SECRET && req.headers.get("x-webhook-secret") !== WEBHOOK_SECRET) {
     console.error("Webhook rechazado: secreto invalido o ausente");
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Verificacion de diagnostico: confirma que las variables de entorno
+  // necesarias esten presentes antes de intentar usar el cliente.
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    const faltantes = [
+      !SUPABASE_URL ? "SUPABASE_URL" : null,
+      !SUPABASE_SERVICE_ROLE_KEY ? "SUPABASE_SERVICE_ROLE_KEY" : null,
+    ].filter(Boolean);
+    return new Response(
+      JSON.stringify({ ok: false, error: "Faltan variables de entorno: " + faltantes.join(", ") }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
