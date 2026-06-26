@@ -8,226 +8,116 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <style>
   :root {
     --verde-cultivo: #2f6b3f;
     --verde-oscuro: #1d4429;
-    --tierra: #8a6d3b;
     --crema: #f6f4ee;
     --carbon: #232821;
     --gris-borde: #d9d6cc;
     --verde-claro: #e8f0e6;
-    /* Semaforo de certificacion */
     --sem-certificable: #2e7d32;
     --sem-aplazado: #e0a200;
     --sem-no: #c0392b;
     --sem-revision: #6b7280;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--crema); color: var(--carbon); line-height: 1.5; }
 
-  body {
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    background: var(--crema);
-    color: var(--carbon);
-    line-height: 1.5;
-  }
-
-  /* ===================== LOGIN ===================== */
-  #login-screen {
-    position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-cultivo));
-    z-index: 1000;
-  }
-  .login-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 2.5rem;
-    width: min(92vw, 400px);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
-  }
-  .login-card h1 {
-    font-size: 1.35rem;
-    color: var(--verde-oscuro);
-    margin-bottom: 0.3rem;
-    line-height: 1.25;
-  }
-  .login-card .sub {
-    font-size: 0.85rem;
-    color: #6b6b6b;
-    margin-bottom: 1.6rem;
-  }
-  .login-card label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 0.35rem;
-    color: var(--carbon);
-  }
-  .login-card input {
-    width: 100%;
-    padding: 0.7rem 0.85rem;
-    border: 1.5px solid var(--gris-borde);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    margin-bottom: 1.1rem;
-  }
-  .login-card input:focus {
-    outline: none;
-    border-color: var(--verde-cultivo);
-  }
-  .btn-primary {
-    width: 100%;
-    padding: 0.8rem;
-    background: var(--verde-cultivo);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
+  #login-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--verde-oscuro), var(--verde-cultivo)); z-index: 1000; }
+  .login-card { background: #fff; border-radius: 14px; padding: 2.5rem; width: min(92vw, 400px); box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+  .login-card h1 { font-size: 1.35rem; color: var(--verde-oscuro); margin-bottom: 0.3rem; line-height: 1.25; }
+  .login-card .sub { font-size: 0.85rem; color: #6b6b6b; margin-bottom: 1.6rem; }
+  .login-card label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem; }
+  .login-card input { width: 100%; padding: 0.7rem 0.85rem; border: 1.5px solid var(--gris-borde); border-radius: 8px; font-size: 0.95rem; margin-bottom: 1.1rem; }
+  .login-card input:focus { outline: none; border-color: var(--verde-cultivo); }
+  .btn-primary { width: 100%; padding: 0.8rem; background: var(--verde-cultivo); color: #fff; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
   .btn-primary:hover { background: var(--verde-oscuro); }
   .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-  .login-error {
-    background: #fdecea;
-    color: var(--sem-no);
-    font-size: 0.82rem;
-    padding: 0.6rem 0.8rem;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-    display: none;
-  }
+  .login-error { background: #fdecea; color: var(--sem-no); font-size: 0.82rem; padding: 0.6rem 0.8rem; border-radius: 6px; margin-bottom: 1rem; display: none; }
 
-  /* ===================== APP ===================== */
   #app { display: none; }
-
-  header.topbar {
-    background: var(--verde-oscuro);
-    color: #fff;
-    padding: 0.85rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
+  header.topbar { background: var(--verde-oscuro); color: #fff; padding: 0.85rem 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
   header.topbar h1 { font-size: 1.05rem; font-weight: 600; }
   header.topbar .user-box { font-size: 0.8rem; display: flex; align-items: center; gap: 0.8rem; }
-  .btn-logout {
-    background: rgba(255,255,255,0.15);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.3);
-    padding: 0.35rem 0.8rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.78rem;
-  }
-  .btn-logout:hover { background: rgba(255,255,255,0.25); }
+  .btn-logout { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 0.35rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; }
+
+  .tabs { background: #fff; border-bottom: 1px solid var(--gris-borde); display: flex; gap: 0.3rem; padding: 0 1.5rem; overflow-x: auto; }
+  .tab { padding: 0.85rem 1.2rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: #777; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .tab.active { color: var(--verde-oscuro); border-bottom-color: var(--verde-cultivo); }
+  .tab:hover { color: var(--verde-oscuro); }
 
   .container { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
+  .vista { display: none; }
+  .vista.active { display: block; }
 
-  /* Tarjetas de resumen */
-  .resumen {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  .card {
-    background: #fff;
-    border: 1px solid var(--gris-borde);
-    border-radius: 10px;
-    padding: 1.1rem 1.2rem;
-  }
+  .breadcrumb { font-size: 0.85rem; color: #777; margin-bottom: 1rem; }
+  .breadcrumb a { color: var(--verde-cultivo); cursor: pointer; text-decoration: none; font-weight: 600; }
+  .breadcrumb a:hover { text-decoration: underline; }
+
+  .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .card { background: #fff; border: 1px solid var(--gris-borde); border-radius: 10px; padding: 1.1rem 1.2rem; }
   .card .num { font-size: 1.9rem; font-weight: 700; color: var(--verde-oscuro); }
-  .card .lbl { font-size: 0.78rem; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.03em; }
+  .card .lbl { font-size: 0.75rem; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.03em; }
   .card.sem-cert { border-left: 4px solid var(--sem-certificable); }
   .card.sem-apl { border-left: 4px solid var(--sem-aplazado); }
   .card.sem-no { border-left: 4px solid var(--sem-no); }
 
-  /* Secciones */
-  .seccion {
-    background: #fff;
-    border: 1px solid var(--gris-borde);
-    border-radius: 10px;
-    margin-bottom: 1.5rem;
-    overflow: hidden;
-  }
-  .seccion-head {
-    padding: 0.9rem 1.2rem;
-    border-bottom: 1px solid var(--gris-borde);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
+  .grid-orgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+  .org-card { background: #fff; border: 1px solid var(--gris-borde); border-radius: 12px; padding: 1.3rem; cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; }
+  .org-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.1); transform: translateY(-2px); }
+  .org-card h3 { color: var(--verde-oscuro); font-size: 1.05rem; margin-bottom: 0.2rem; }
+  .org-card .sigla { display: inline-block; background: var(--verde-claro); color: var(--verde-oscuro); font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 20px; margin-bottom: 0.8rem; }
+  .org-card .meta { font-size: 0.82rem; color: #666; margin-bottom: 0.3rem; }
+  .org-card .stats { display: flex; gap: 1.2rem; margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid #eee; }
+  .org-card .stat { font-size: 0.78rem; color: #777; }
+  .org-card .stat b { display: block; font-size: 1.3rem; color: var(--verde-oscuro); }
+
+  .seccion { background: #fff; border: 1px solid var(--gris-borde); border-radius: 10px; margin-bottom: 1.5rem; overflow: hidden; }
+  .seccion-head { padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--gris-borde); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
   .seccion-head h2 { font-size: 1rem; color: var(--verde-oscuro); }
+  .seccion-body { padding: 1.2rem; }
+  #mapa { height: 420px; width: 100%; }
 
-  #mapa { height: 460px; width: 100%; }
-
-  /* Filtros y tabla */
-  select, .btn-export {
-    padding: 0.5rem 0.8rem;
-    border: 1.5px solid var(--gris-borde);
-    border-radius: 7px;
-    font-size: 0.85rem;
-    background: #fff;
-    cursor: pointer;
-  }
-  .btn-export {
-    background: var(--verde-cultivo);
-    color: #fff;
-    border-color: var(--verde-cultivo);
-    font-weight: 600;
-  }
-  .btn-export:hover { background: var(--verde-oscuro); }
+  .btn-export, .btn-pdf { padding: 0.5rem 0.9rem; border: 1.5px solid var(--verde-cultivo); border-radius: 7px; font-size: 0.85rem; background: var(--verde-cultivo); color: #fff; font-weight: 600; cursor: pointer; }
+  .btn-export:hover, .btn-pdf:hover { background: var(--verde-oscuro); }
 
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  thead th {
-    background: var(--verde-claro);
-    text-align: left;
-    padding: 0.65rem 0.9rem;
-    font-weight: 600;
-    color: var(--verde-oscuro);
-    position: sticky; top: 0;
-  }
+  thead th { background: var(--verde-claro); text-align: left; padding: 0.65rem 0.9rem; font-weight: 600; color: var(--verde-oscuro); position: sticky; top: 0; }
   tbody td { padding: 0.6rem 0.9rem; border-bottom: 1px solid #eee; }
   tbody tr:hover { background: #fafaf7; }
-  .tabla-scroll { max-height: 420px; overflow-y: auto; }
+  .tabla-scroll { max-height: 460px; overflow-y: auto; }
 
-  .badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: 20px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #fff;
-  }
+  .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; color: #fff; }
   .badge-cert { background: var(--sem-certificable); }
   .badge-apl { background: var(--sem-aplazado); }
   .badge-no { background: var(--sem-no); }
   .badge-rev { background: var(--sem-revision); }
   .badge-sin { background: #b0b0b0; }
 
+  .ficha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+  .ficha-bloque { background: #fafaf7; border: 1px solid #eee; border-radius: 8px; padding: 1rem; }
+  .ficha-bloque h4 { color: var(--verde-oscuro); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.6rem; }
+  .ficha-item { font-size: 0.83rem; padding: 0.25rem 0; border-bottom: 1px dashed #e5e5e5; }
+  .ficha-item:last-child { border-bottom: none; }
+  .ficha-item .k { color: #888; }
+  .ficha-item .v { color: var(--carbon); font-weight: 600; }
+
   .loading { padding: 2rem; text-align: center; color: #888; }
   .leaflet-popup-content { font-size: 0.82rem; line-height: 1.4; }
   .leaflet-popup-content b { color: var(--verde-oscuro); }
+  .aprox-nota { font-size: 0.75rem; color: #999; font-style: italic; }
 
-  @media (max-width: 600px) {
-    .container { padding: 1rem; }
-    header.topbar h1 { font-size: 0.9rem; }
-  }
+  footer.pie { text-align: center; padding: 1.5rem; font-size: 0.78rem; color: #888; border-top: 1px solid var(--gris-borde); margin-top: 1rem; }
+
+  @media (max-width: 600px) { .container { padding: 1rem; } }
 </style>
 </head>
 <body>
 
-<!-- ===================== LOGIN ===================== -->
 <div id="login-screen">
   <div class="login-card">
     <h1>Panel de Seguimiento</h1>
@@ -241,7 +131,6 @@
   </div>
 </div>
 
-<!-- ===================== APP ===================== -->
 <div id="app">
   <header class="topbar">
     <h1>Panel de Seguimiento — Sustitución de Cultivos</h1>
@@ -251,64 +140,78 @@
     </div>
   </header>
 
+  <div class="tabs">
+    <div class="tab active" data-vista="asociaciones">Asociaciones</div>
+    <div class="tab" data-vista="mapa">Mapa general</div>
+    <div class="tab" data-vista="certificaciones">Certificaciones</div>
+  </div>
+
   <div class="container">
-    <!-- Resumen -->
-    <div class="resumen" id="resumen">
-      <div class="card"><div class="num" id="r-orgs">—</div><div class="lbl">Organizaciones</div></div>
-      <div class="card"><div class="num" id="r-asoc">—</div><div class="lbl">Asociados</div></div>
-      <div class="card"><div class="num" id="r-cert-total">—</div><div class="lbl">Visitas de certificación</div></div>
-      <div class="card sem-cert"><div class="num" id="r-cert-ok">—</div><div class="lbl">Certificables</div></div>
-      <div class="card sem-apl"><div class="num" id="r-cert-apl">—</div><div class="lbl">Aplazados</div></div>
-      <div class="card sem-no"><div class="num" id="r-cert-no">—</div><div class="lbl">No certificables</div></div>
+    <div class="vista active" id="vista-asociaciones">
+      <div class="resumen">
+        <div class="card"><div class="num" id="r-orgs">—</div><div class="lbl">Organizaciones</div></div>
+        <div class="card"><div class="num" id="r-asoc">—</div><div class="lbl">Asociados</div></div>
+        <div class="card"><div class="num" id="r-cert-total">—</div><div class="lbl">Visitas certificación</div></div>
+        <div class="card sem-cert"><div class="num" id="r-cert-ok">—</div><div class="lbl">Certificables</div></div>
+        <div class="card sem-apl"><div class="num" id="r-cert-apl">—</div><div class="lbl">Aplazados</div></div>
+        <div class="card sem-no"><div class="num" id="r-cert-no">—</div><div class="lbl">No certificables</div></div>
+      </div>
+      <div class="grid-orgs" id="grid-orgs"><div class="loading">Cargando asociaciones…</div></div>
     </div>
 
-    <!-- Mapa -->
-    <div class="seccion">
-      <div class="seccion-head"><h2>Mapa de predios y organizaciones</h2></div>
-      <div id="mapa"></div>
-    </div>
-
-    <!-- Listado de asociados -->
-    <div class="seccion">
-      <div class="seccion-head">
-        <h2>Asociados por organización</h2>
-        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
-          <select id="filtro-org"><option value="">Todas las organizaciones</option></select>
-          <button class="btn-export" id="btn-export-asoc">Descargar Excel</button>
+    <div class="vista" id="vista-detalle">
+      <div class="breadcrumb"><a id="volver-lista">← Asociaciones</a> / <span id="bc-org"></span></div>
+      <div class="seccion">
+        <div class="seccion-head">
+          <h2 id="detalle-nombre"></h2>
+          <button class="btn-pdf" id="btn-pdf-org">Descargar PDF</button>
+        </div>
+        <div class="seccion-body"><div class="ficha-grid" id="ficha-caracterizacion"></div></div>
+      </div>
+      <div class="seccion">
+        <div class="seccion-head"><h2>Asociados</h2></div>
+        <div class="tabla-scroll">
+          <table id="tabla-asoc-org">
+            <thead><tr><th>Asociado</th><th>Documento</th><th>Predio</th><th>Cultivo principal</th><th>Hectáreas</th><th>Certificación</th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
-      <div class="tabla-scroll">
-        <table id="tabla-asoc">
-          <thead>
-            <tr>
-              <th>Organización</th><th>Asociado</th><th>Documento</th>
-              <th>Predio</th><th>Cultivo principal</th><th>Hectáreas</th><th>Certificación</th>
-            </tr>
-          </thead>
-          <tbody><tr><td colspan="7" class="loading">Cargando…</td></tr></tbody>
-        </table>
+      <div class="seccion">
+        <div class="seccion-head"><h2>Procesos de certificación</h2></div>
+        <div class="tabla-scroll">
+          <table id="tabla-cert-org">
+            <thead><tr><th>Productor</th><th>Especie</th><th>Fund.</th><th>May.</th><th>Men.</th><th>Concepto</th><th>Fecha</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <!-- Certificaciones -->
-    <div class="seccion">
-      <div class="seccion-head">
-        <h2>Estado de certificaciones ICA</h2>
-        <button class="btn-export" id="btn-export-cert">Descargar Excel</button>
+    <div class="vista" id="vista-mapa">
+      <div class="seccion">
+        <div class="seccion-head">
+          <h2>Mapa general</h2>
+          <span class="aprox-nota">Asociaciones: ubicación aproximada en cabecera municipal · Predios: ubicación GPS real</span>
+        </div>
+        <div id="mapa"></div>
       </div>
-      <div class="tabla-scroll">
-        <table id="tabla-cert">
-          <thead>
-            <tr>
-              <th>Código</th><th>Organización</th><th>Productor</th><th>Especie</th>
-              <th>Fund.</th><th>May.</th><th>Men.</th><th>Concepto</th><th>Fecha visita</th>
-            </tr>
-          </thead>
-          <tbody><tr><td colspan="9" class="loading">Cargando…</td></tr></tbody>
-        </table>
+    </div>
+
+    <div class="vista" id="vista-certificaciones">
+      <div class="seccion">
+        <div class="seccion-head">
+          <h2>Procesos de certificación por asociación</h2>
+          <button class="btn-export" id="btn-export-cert">Descargar Excel</button>
+        </div>
+        <div class="seccion-body" id="cert-agrupadas"></div>
       </div>
     </div>
   </div>
+
+  <footer class="pie">
+    Elaborado por Diego de Jesús Castaño Parra, Esp. SIG — Territorial Valle del Cauca
+  </footer>
 </div>
 
 <script src="config.js"></script>
@@ -316,37 +219,48 @@
 const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.PANEL_CONFIG;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let mapa, capaMarcadores;
-let datosAsociados = [];
-let datosCertificaciones = [];
+const CABECERAS = {
+  "dagua": [3.6578, -76.6878], "el dovio": [4.5097, -76.2375], "bolívar": [4.3389, -76.1869],
+  "bolivar": [4.3389, -76.1869], "cartago": [4.7461, -75.9117], "versalles": [4.5747, -76.1942],
+  "ulloa": [4.7028, -75.7378], "el águila": [4.9069, -76.0386], "el aguila": [4.9069, -76.0386],
+  "argelia": [4.7264, -76.1186], "ansermanuevo": [4.7964, -75.9947], "obando": [4.5764, -75.9750],
+  "la victoria": [4.5239, -76.0367], "alcalá": [4.6739, -75.7806], "alcala": [4.6739, -75.7806],
+  "toro": [4.6097, -76.0792], "el cairo": [4.7639, -76.2231], "trujillo": [4.2089, -76.3197],
+};
+const CENTRO_VALLE = [4.0, -76.2];
 
-// ---------- Helpers ----------
+let ORGS = [], ASOCS = [], CERTS = [], CARACT = {};
+let mapaGeneral;
+
 function parseGeo(gps) {
   if (!gps || typeof gps !== "string") return null;
   const p = gps.trim().split(/\s+/).map(Number);
   if (p.length < 2 || isNaN(p[0]) || isNaN(p[1])) return null;
-  return { lat: p[0], lon: p[1] };
+  return [p[0], p[1]];
 }
-
-function conceptoBadge(concepto) {
-  const c = (concepto || "").toLowerCase();
-  if (c.includes("certificable") && !c.includes("no")) return '<span class="badge badge-cert">Certificable</span>';
-  if (c === "certificable") return '<span class="badge badge-cert">Certificable</span>';
-  if (c.includes("aplaz")) return '<span class="badge badge-apl">Aplazado</span>';
-  if (c.includes("no")) return '<span class="badge badge-no">No certificable</span>';
-  if (c.includes("revis")) return '<span class="badge badge-rev">En revisión</span>';
+function cabeceraDe(municipio) {
+  if (!municipio) return null;
+  return CABECERAS[municipio.trim().toLowerCase()] || null;
+}
+function badge(c) {
+  const x = (c || "").toLowerCase();
+  if (x === "certificable") return '<span class="badge badge-cert">Certificable</span>';
+  if (x.includes("aplaz")) return '<span class="badge badge-apl">Aplazado</span>';
+  if (x.includes("no")) return '<span class="badge badge-no">No certificable</span>';
+  if (x.includes("revis")) return '<span class="badge badge-rev">En revisión</span>';
   return '<span class="badge badge-sin">Sin visita</span>';
 }
-
-function colorPredio(concepto) {
-  const c = (concepto || "").toLowerCase();
-  if (c === "certificable") return "#2e7d32";
-  if (c.includes("aplaz")) return "#e0a200";
-  if (c.includes("no")) return "#c0392b";
+function colorPredio(c) {
+  const x = (c || "").toLowerCase();
+  if (x === "certificable") return "#2e7d32";
+  if (x.includes("aplaz")) return "#e0a200";
+  if (x.includes("no")) return "#c0392b";
   return "#6b7280";
 }
+function certDeAsociado(doc) {
+  return CERTS.find(c => c.codigo_certificacion && c.codigo_certificacion.includes(doc));
+}
 
-// ---------- LOGIN ----------
 const loginScreen = document.getElementById("login-screen");
 const appDiv = document.getElementById("app");
 const loginError = document.getElementById("login-error");
@@ -356,225 +270,266 @@ async function intentarLogin() {
   const password = document.getElementById("password").value;
   const btn = document.getElementById("btn-login");
   loginError.style.display = "none";
-  if (!email || !password) {
-    loginError.textContent = "Escribe tu correo y contraseña.";
-    loginError.style.display = "block";
-    return;
-  }
+  if (!email || !password) { loginError.textContent = "Escribe tu correo y contraseña."; loginError.style.display = "block"; return; }
   btn.disabled = true; btn.textContent = "Entrando…";
   const { error } = await sb.auth.signInWithPassword({ email, password });
   btn.disabled = false; btn.textContent = "Iniciar sesión";
-  if (error) {
-    loginError.textContent = "Correo o contraseña incorrectos.";
-    loginError.style.display = "block";
-    return;
-  }
+  if (error) { loginError.textContent = "Correo o contraseña incorrectos."; loginError.style.display = "block"; return; }
   await iniciarApp();
 }
-
 document.getElementById("btn-login").addEventListener("click", intentarLogin);
-document.getElementById("password").addEventListener("keydown", (e) => { if (e.key === "Enter") intentarLogin(); });
+document.getElementById("password").addEventListener("keydown", e => { if (e.key === "Enter") intentarLogin(); });
+document.getElementById("btn-logout").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
 
-document.getElementById("btn-logout").addEventListener("click", async () => {
-  await sb.auth.signOut();
-  location.reload();
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    mostrarVista(tab.dataset.vista);
+  });
 });
+function mostrarVista(v) {
+  document.querySelectorAll(".vista").forEach(x => x.classList.remove("active"));
+  if (v === "asociaciones") document.getElementById("vista-asociaciones").classList.add("active");
+  else if (v === "mapa") { document.getElementById("vista-mapa").classList.add("active"); setTimeout(initMapaGeneral, 100); }
+  else if (v === "certificaciones") document.getElementById("vista-certificaciones").classList.add("active");
+}
 
-// ---------- App ----------
 async function iniciarApp() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
   document.getElementById("user-email").textContent = user.email;
   loginScreen.style.display = "none";
   appDiv.style.display = "block";
-
-  initMapa();
   await cargarDatos();
 }
 
-function initMapa() {
-  if (mapa) return;
-  mapa = L.map("mapa").setView([3.9, -76.2], 9); // Valle del Cauca aprox
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "© OpenStreetMap", maxZoom: 18,
-  }).addTo(mapa);
-  capaMarcadores = L.layerGroup().addTo(mapa);
-}
-
 async function cargarDatos() {
-  // Organizaciones
-  const { data: orgs } = await sb.from("organizaciones")
-    .select("id, codigo_organizacion, nombre, sigla, municipio, gps_sede");
-  // Asociados (vista que une persona + membresia)
-  const { data: asocs } = await sb.from("asociados")
-    .select("codigo_asociado, organizacion_id, nombre_completo, numero_documento, nombre_predio, gps_predio, cultivo_principal, hectareas_sembradas");
-  // Certificaciones
-  const { data: certs } = await sb.from("certificaciones_ica")
-    .select("codigo_certificacion, organizacion_id, membresia_id, nombre_productor, especie_cultivada, gps_predio, fundamentales_cumplidos, fundamentales_aplicables, mayores_cumplidos, mayores_aplicables, menores_cumplidos, menores_aplicables, concepto_tecnico, fecha_visita_tecnica");
-
-  const orgMap = {};
-  (orgs || []).forEach(o => orgMap[o.id] = o);
-
-  datosAsociados = (asocs || []).map(a => ({ ...a, org: orgMap[a.organizacion_id] }));
-  datosCertificaciones = (certs || []).map(c => ({ ...c, org: orgMap[c.organizacion_id] }));
-
-  pintarResumen(orgs || [], asocs || [], certs || []);
-  pintarMapa(orgs || [], datosAsociados, datosCertificaciones);
-  llenarFiltroOrgs(orgs || []);
-  pintarTablaAsociados();
-  pintarTablaCertificaciones();
+  const { data: orgs } = await sb.from("organizaciones").select("*");
+  const { data: asocs } = await sb.from("asociados").select("*");
+  const { data: certs } = await sb.from("certificaciones_ica").select("*");
+  const { data: caract } = await sb.from("caracterizacion_organizaciones").select("*");
+  ORGS = orgs || []; ASOCS = asocs || []; CERTS = certs || [];
+  (caract || []).forEach(c => { CARACT[c.organizacion_id] = c; });
+  pintarResumen();
+  pintarGridOrgs();
+  pintarCertAgrupadas();
 }
 
-function pintarResumen(orgs, asocs, certs) {
-  document.getElementById("r-orgs").textContent = orgs.length;
-  document.getElementById("r-asoc").textContent = asocs.length;
-  document.getElementById("r-cert-total").textContent = certs.length;
-  const norm = (c) => (c || "").toLowerCase();
-  document.getElementById("r-cert-ok").textContent = certs.filter(c => norm(c.concepto_tecnico) === "certificable").length;
-  document.getElementById("r-cert-apl").textContent = certs.filter(c => norm(c.concepto_tecnico).includes("aplaz")).length;
-  document.getElementById("r-cert-no").textContent = certs.filter(c => norm(c.concepto_tecnico).includes("no")).length;
+function pintarResumen() {
+  document.getElementById("r-orgs").textContent = ORGS.length;
+  document.getElementById("r-asoc").textContent = ASOCS.length;
+  document.getElementById("r-cert-total").textContent = CERTS.length;
+  const n = c => (c || "").toLowerCase();
+  document.getElementById("r-cert-ok").textContent = CERTS.filter(c => n(c.concepto_tecnico) === "certificable").length;
+  document.getElementById("r-cert-apl").textContent = CERTS.filter(c => n(c.concepto_tecnico).includes("aplaz")).length;
+  document.getElementById("r-cert-no").textContent = CERTS.filter(c => n(c.concepto_tecnico).includes("no")).length;
 }
 
-function pintarMapa(orgs, asocs, certs) {
-  capaMarcadores.clearLayers();
-  const puntos = [];
-
-  // Mapa de concepto por membresia para colorear predios
-  const conceptoPorAsociado = {};
-  certs.forEach(c => { if (c.membresia_id) conceptoPorAsociado[c.codigo_certificacion] = c.concepto_tecnico; });
-
-  // Organizaciones (marcador cuadrado verde oscuro)
-  orgs.forEach(o => {
-    const g = parseGeo(o.gps_sede);
-    if (!g) return;
-    const m = L.circleMarker([g.lat, g.lon], {
-      radius: 9, color: "#1d4429", fillColor: "#2f6b3f", fillOpacity: 0.9, weight: 2,
-    }).bindPopup(`<b>${o.nombre || o.codigo_organizacion}</b><br>${o.sigla || ""}<br>Sede · ${o.municipio || ""}`);
-    capaMarcadores.addLayer(m);
-    puntos.push([g.lat, g.lon]);
-  });
-
-  // Predios de asociados (color segun certificacion si existe)
-  asocs.forEach(a => {
-    const g = parseGeo(a.gps_predio);
-    if (!g) return;
-    // buscar certificacion de este asociado
-    const cert = certs.find(c => c.codigo_certificacion && c.codigo_certificacion.includes(a.numero_documento));
-    const color = cert ? colorPredio(cert.concepto_tecnico) : "#6b7280";
-    const m = L.circleMarker([g.lat, g.lon], {
-      radius: 6, color: "#fff", fillColor: color, fillOpacity: 0.95, weight: 1.5,
-    }).bindPopup(
-      `<b>${a.nombre_completo}</b><br>` +
-      `${a.org ? a.org.nombre : ""}<br>` +
-      `Predio: ${a.nombre_predio || "—"}<br>` +
-      `Cultivo: ${a.cultivo_principal || "—"}<br>` +
-      (cert ? `Certificación: ${cert.concepto_tecnico}` : "Sin visita de certificación")
-    );
-    capaMarcadores.addLayer(m);
-    puntos.push([g.lat, g.lon]);
-  });
-
-  if (puntos.length) mapa.fitBounds(puntos, { padding: [40, 40], maxZoom: 13 });
-}
-
-function llenarFiltroOrgs(orgs) {
-  const sel = document.getElementById("filtro-org");
-  orgs.forEach(o => {
-    const opt = document.createElement("option");
-    opt.value = o.id;
-    opt.textContent = (o.sigla ? o.sigla + " — " : "") + (o.nombre || o.codigo_organizacion);
-    sel.appendChild(opt);
-  });
-  sel.addEventListener("change", pintarTablaAsociados);
-}
-
-function pintarTablaAsociados() {
-  const filtroOrg = document.getElementById("filtro-org").value;
-  const tbody = document.querySelector("#tabla-asoc tbody");
-  const filas = datosAsociados.filter(a => !filtroOrg || a.organizacion_id === filtroOrg);
-
-  if (!filas.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="loading">Sin asociados para mostrar.</td></tr>';
-    return;
-  }
-
-  // certificacion por asociado (match por documento dentro del codigo)
-  tbody.innerHTML = filas.map(a => {
-    const cert = datosCertificaciones.find(c => c.codigo_certificacion && c.codigo_certificacion.includes(a.numero_documento));
-    return `<tr>
-      <td>${a.org ? (a.org.sigla || a.org.nombre) : "—"}</td>
-      <td>${a.nombre_completo || "—"}</td>
-      <td>${a.numero_documento || "—"}</td>
-      <td>${a.nombre_predio || "—"}</td>
-      <td>${a.cultivo_principal || "—"}</td>
-      <td>${a.hectareas_sembradas != null ? a.hectareas_sembradas : "—"}</td>
-      <td>${cert ? conceptoBadge(cert.concepto_tecnico) : '<span class="badge badge-sin">Sin visita</span>'}</td>
-    </tr>`;
+function pintarGridOrgs() {
+  const grid = document.getElementById("grid-orgs");
+  if (!ORGS.length) { grid.innerHTML = '<div class="loading">No hay asociaciones registradas.</div>'; return; }
+  grid.innerHTML = ORGS.map(o => {
+    const nAsoc = ASOCS.filter(a => a.organizacion_id === o.id).length;
+    const nCert = CERTS.filter(c => c.organizacion_id === o.id).length;
+    return `<div class="org-card" data-org="${o.id}">
+      <div class="sigla">${o.sigla || o.codigo_organizacion}</div>
+      <h3>${o.nombre || ""}</h3>
+      <div class="meta">📍 ${o.municipio || "—"}, ${o.departamento || "Valle del Cauca"}</div>
+      <div class="meta">👤 ${o.representante_legal || "—"}</div>
+      <div class="stats">
+        <div class="stat"><b>${nAsoc}</b> Asociados</div>
+        <div class="stat"><b>${nCert}</b> Certificaciones</div>
+      </div>
+    </div>`;
   }).join("");
+  grid.querySelectorAll(".org-card").forEach(card => {
+    card.addEventListener("click", () => abrirDetalle(card.dataset.org));
+  });
 }
 
-function pintarTablaCertificaciones() {
-  const tbody = document.querySelector("#tabla-cert tbody");
-  if (!datosCertificaciones.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="loading">Aún no hay certificaciones registradas.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = datosCertificaciones.map(c => `<tr>
-    <td>${c.codigo_certificacion || "—"}</td>
-    <td>${c.org ? (c.org.sigla || c.org.nombre) : "—"}</td>
-    <td>${c.nombre_productor || "—"}</td>
-    <td>${c.especie_cultivada || "—"}</td>
+function abrirDetalle(orgId) {
+  const org = ORGS.find(o => o.id === orgId);
+  if (!org) return;
+  document.querySelectorAll(".vista").forEach(x => x.classList.remove("active"));
+  document.getElementById("vista-detalle").classList.add("active");
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+
+  document.getElementById("bc-org").textContent = org.sigla || org.nombre;
+  document.getElementById("detalle-nombre").textContent = org.nombre;
+  document.getElementById("btn-pdf-org").onclick = () => generarPDF(org);
+  pintarFicha(org);
+
+  const asocs = ASOCS.filter(a => a.organizacion_id === orgId);
+  const tb = document.querySelector("#tabla-asoc-org tbody");
+  tb.innerHTML = asocs.length ? asocs.map(a => {
+    const cert = certDeAsociado(a.numero_documento);
+    return `<tr><td>${a.nombre_completo || "—"}</td><td>${a.numero_documento || "—"}</td>
+      <td>${a.nombre_predio || "—"}</td><td>${a.cultivo_principal || "—"}</td>
+      <td>${a.hectareas_sembradas ?? "—"}</td><td>${cert ? badge(cert.concepto_tecnico) : badge(null)}</td></tr>`;
+  }).join("") : '<tr><td colspan="6" class="loading">Sin asociados registrados.</td></tr>';
+
+  const certs = CERTS.filter(c => c.organizacion_id === orgId);
+  const tc = document.querySelector("#tabla-cert-org tbody");
+  tc.innerHTML = certs.length ? certs.map(c => `<tr>
+    <td>${c.nombre_productor || "—"}</td><td>${c.especie_cultivada || "—"}</td>
     <td>${c.fundamentales_cumplidos ?? "—"}/${c.fundamentales_aplicables ?? "—"}</td>
     <td>${c.mayores_cumplidos ?? "—"}/${c.mayores_aplicables ?? "—"}</td>
     <td>${c.menores_cumplidos ?? "—"}/${c.menores_aplicables ?? "—"}</td>
-    <td>${conceptoBadge(c.concepto_tecnico)}</td>
-    <td>${c.fecha_visita_tecnica || "—"}</td>
-  </tr>`).join("");
-}
+    <td>${badge(c.concepto_tecnico)}</td><td>${c.fecha_visita_tecnica || "—"}</td></tr>`).join("")
+    : '<tr><td colspan="7" class="loading">Sin procesos de certificación.</td></tr>';
 
-// ---------- Exportar a Excel ----------
-function exportarExcel(filas, nombreHoja, nombreArchivo) {
-  const ws = XLSX.utils.json_to_sheet(filas);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
-  XLSX.writeFile(wb, nombreArchivo);
+  window.scrollTo(0, 0);
 }
-
-document.getElementById("btn-export-asoc").addEventListener("click", () => {
-  const filtroOrg = document.getElementById("filtro-org").value;
-  const filas = datosAsociados
-    .filter(a => !filtroOrg || a.organizacion_id === filtroOrg)
-    .map(a => {
-      const cert = datosCertificaciones.find(c => c.codigo_certificacion && c.codigo_certificacion.includes(a.numero_documento));
-      return {
-        Organizacion: a.org ? a.org.nombre : "",
-        Asociado: a.nombre_completo,
-        Documento: a.numero_documento,
-        Predio: a.nombre_predio,
-        Cultivo_principal: a.cultivo_principal,
-        Hectareas: a.hectareas_sembradas,
-        Estado_certificacion: cert ? cert.concepto_tecnico : "Sin visita",
-      };
-    });
-  exportarExcel(filas, "Asociados", "asociados.xlsx");
+document.getElementById("volver-lista").addEventListener("click", () => {
+  document.querySelectorAll(".vista").forEach(x => x.classList.remove("active"));
+  document.getElementById("vista-asociaciones").classList.add("active");
+  document.querySelector('.tab[data-vista="asociaciones"]').classList.add("active");
 });
+
+function pintarFicha(org) {
+  const c = CARACT[org.id];
+  const cont = document.getElementById("ficha-caracterizacion");
+  let html = `<div class="ficha-bloque"><h4>Datos generales</h4>
+    <div class="ficha-item"><span class="k">NIT:</span> <span class="v">${org.nit || "—"}</span></div>
+    <div class="ficha-item"><span class="k">Tipo:</span> <span class="v">${org.tipo_organizacion || "—"}</span></div>
+    <div class="ficha-item"><span class="k">Municipio:</span> <span class="v">${org.municipio || "—"}</span></div>
+    <div class="ficha-item"><span class="k">Representante:</span> <span class="v">${org.representante_legal || "—"}</span></div>
+    <div class="ficha-item"><span class="k">Teléfono:</span> <span class="v">${org.telefono || "—"}</span></div>
+    <div class="ficha-item"><span class="k">Correo:</span> <span class="v">${org.correo_electronico || "—"}</span></div>
+    <div class="ficha-item"><span class="k">Veredas:</span> <span class="v">${org.veredas_presencia || "—"}</span></div>
+  </div>`;
+  if (c) {
+    const bloques = {
+      "Gobernanza": c.gobernanza, "Género y juventud": c.genero_juventud,
+      "Producción": c.produccion, "Comercialización": c.comercializacion,
+      "Ambiental / BPA": c.ambiental_bpa, "Finanzas": c.finanzas,
+    };
+    for (const [titulo, datos] of Object.entries(bloques)) {
+      if (!datos || typeof datos !== "object") continue;
+      const items = Object.entries(datos).filter(([k, v]) => v !== null && v !== "").slice(0, 8);
+      if (!items.length) continue;
+      html += `<div class="ficha-bloque"><h4>${titulo}</h4>` +
+        items.map(([k, v]) => `<div class="ficha-item"><span class="k">${k}:</span> <span class="v">${v}</span></div>`).join("") +
+        `</div>`;
+    }
+  }
+  cont.innerHTML = html;
+}
+
+function pintarCertAgrupadas() {
+  const cont = document.getElementById("cert-agrupadas");
+  if (!CERTS.length) { cont.innerHTML = '<div class="loading">Aún no hay certificaciones registradas.</div>'; return; }
+  let html = "";
+  ORGS.forEach(o => {
+    const certs = CERTS.filter(c => c.organizacion_id === o.id);
+    if (!certs.length) return;
+    html += `<h3 style="color:var(--verde-oscuro);margin:1rem 0 0.5rem;">${o.sigla || o.nombre}</h3>
+      <table><thead><tr><th>Productor</th><th>Especie</th><th>Concepto</th><th>Fecha</th></tr></thead><tbody>` +
+      certs.map(c => `<tr><td>${c.nombre_productor || "—"}</td><td>${c.especie_cultivada || "—"}</td>
+        <td>${badge(c.concepto_tecnico)}</td><td>${c.fecha_visita_tecnica || "—"}</td></tr>`).join("") +
+      `</tbody></table>`;
+  });
+  cont.innerHTML = html || '<div class="loading">Aún no hay certificaciones registradas.</div>';
+}
+
+function initMapaGeneral() {
+  if (mapaGeneral) { mapaGeneral.invalidateSize(); return; }
+  mapaGeneral = L.map("mapa").setView(CENTRO_VALLE, 9);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 18 }).addTo(mapaGeneral);
+  const puntos = [];
+  ORGS.forEach(o => {
+    const cab = cabeceraDe(o.municipio);
+    if (!cab) return;
+    L.circleMarker(cab, { radius: 10, color: "#1d4429", fillColor: "#2f6b3f", fillOpacity: 0.85, weight: 2 })
+      .bindPopup(`<b>${o.nombre}</b><br>${o.sigla || ""}<br><span style="color:#999">Ubicación aproximada: cabecera de ${o.municipio}</span>`).addTo(mapaGeneral);
+    puntos.push(cab);
+  });
+  ASOCS.forEach(a => {
+    const g = parseGeo(a.gps_predio);
+    if (!g) return;
+    const cert = certDeAsociado(a.numero_documento);
+    L.circleMarker(g, { radius: 6, color: "#fff", fillColor: colorPredio(cert ? cert.concepto_tecnico : null), fillOpacity: 0.95, weight: 1.5 })
+      .bindPopup(`<b>${a.nombre_completo}</b><br>Predio: ${a.nombre_predio || "—"}<br>Cultivo: ${a.cultivo_principal || "—"}<br>${cert ? "Certificación: " + cert.concepto_tecnico : "Sin visita"}`).addTo(mapaGeneral);
+    puntos.push(g);
+  });
+  if (puntos.length) mapaGeneral.fitBounds(puntos, { padding: [40, 40], maxZoom: 11 });
+}
 
 document.getElementById("btn-export-cert").addEventListener("click", () => {
-  const filas = datosCertificaciones.map(c => ({
-    Codigo: c.codigo_certificacion,
-    Organizacion: c.org ? c.org.nombre : "",
-    Productor: c.nombre_productor,
-    Especie: c.especie_cultivada,
-    Fundamentales: `${c.fundamentales_cumplidos ?? ""}/${c.fundamentales_aplicables ?? ""}`,
-    Mayores: `${c.mayores_cumplidos ?? ""}/${c.mayores_aplicables ?? ""}`,
-    Menores: `${c.menores_cumplidos ?? ""}/${c.menores_aplicables ?? ""}`,
-    Concepto: c.concepto_tecnico,
-    Fecha_visita: c.fecha_visita_tecnica,
-  }));
-  exportarExcel(filas, "Certificaciones", "certificaciones_ica.xlsx");
+  let csv = "Asociacion,Productor,Especie,Fundamentales,Mayores,Menores,Concepto,Fecha\n";
+  ORGS.forEach(o => {
+    CERTS.filter(c => c.organizacion_id === o.id).forEach(c => {
+      csv += `"${o.nombre}","${c.nombre_productor || ""}","${c.especie_cultivada || ""}","${c.fundamentales_cumplidos ?? ""}/${c.fundamentales_aplicables ?? ""}","${c.mayores_cumplidos ?? ""}/${c.mayores_aplicables ?? ""}","${c.menores_cumplidos ?? ""}/${c.menores_aplicables ?? ""}","${c.concepto_tecnico || ""}","${c.fecha_visita_tecnica || ""}"\n`;
+    });
+  });
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "certificaciones.csv"; a.click();
 });
 
-// ---------- Arranque: si ya hay sesion activa, entra directo ----------
+function generarPDF(org) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const verde = [47, 107, 63];
+  let y = 18;
+
+  doc.setFontSize(16); doc.setTextColor(...verde);
+  doc.text("Ficha de Asociación", 14, y); y += 8;
+  doc.setFontSize(13); doc.setTextColor(40);
+  doc.text(org.nombre || "", 14, y); y += 6;
+  doc.setFontSize(9); doc.setTextColor(120);
+  doc.text("Programa de Sustitución de Cultivos · Resolución ICA 30021/2017", 14, y); y += 8;
+
+  const datos = [
+    ["Sigla", org.sigla || "—"], ["NIT", org.nit || "—"],
+    ["Tipo", org.tipo_organizacion || "—"], ["Municipio", org.municipio || "—"],
+    ["Departamento", org.departamento || "Valle del Cauca"],
+    ["Representante legal", org.representante_legal || "—"],
+    ["Teléfono", org.telefono || "—"], ["Correo", org.correo_electronico || "—"],
+    ["Veredas", org.veredas_presencia || "—"],
+  ];
+  doc.autoTable({ startY: y, head: [["Dato", "Valor"]], body: datos,
+    theme: "grid", headStyles: { fillColor: verde }, styles: { fontSize: 8 }, margin: { left: 14, right: 14 } });
+  y = doc.lastAutoTable.finalY + 8;
+
+  const asocs = ASOCS.filter(a => a.organizacion_id === org.id);
+  doc.setFontSize(12); doc.setTextColor(...verde);
+  doc.text("Asociados (" + asocs.length + ")", 14, y);
+  doc.autoTable({ startY: y + 2,
+    head: [["Asociado", "Documento", "Predio", "Cultivo", "Ha", "Certificación"]],
+    body: asocs.map(a => {
+      const cert = certDeAsociado(a.numero_documento);
+      return [a.nombre_completo || "—", a.numero_documento || "—", a.nombre_predio || "—",
+        a.cultivo_principal || "—", String(a.hectareas_sembradas ?? "—"), cert ? cert.concepto_tecnico : "Sin visita"];
+    }),
+    theme: "striped", headStyles: { fillColor: verde }, styles: { fontSize: 7.5 }, margin: { left: 14, right: 14 } });
+  y = doc.lastAutoTable.finalY + 8;
+
+  const certs = CERTS.filter(c => c.organizacion_id === org.id);
+  if (y > 240) { doc.addPage(); y = 18; }
+  doc.setFontSize(12); doc.setTextColor(...verde);
+  doc.text("Procesos de certificación (" + certs.length + ")", 14, y);
+  doc.autoTable({ startY: y + 2,
+    head: [["Productor", "Especie", "Fund.", "May.", "Men.", "Concepto", "Fecha"]],
+    body: certs.map(c => [c.nombre_productor || "—", c.especie_cultivada || "—",
+      `${c.fundamentales_cumplidos ?? "—"}/${c.fundamentales_aplicables ?? "—"}`,
+      `${c.mayores_cumplidos ?? "—"}/${c.mayores_aplicables ?? "—"}`,
+      `${c.menores_cumplidos ?? "—"}/${c.menores_aplicables ?? "—"}`,
+      c.concepto_tecnico || "—", c.fecha_visita_tecnica || "—"]),
+    theme: "striped", headStyles: { fillColor: verde }, styles: { fontSize: 7.5 }, margin: { left: 14, right: 14 } });
+
+  const total = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5); doc.setTextColor(130);
+    doc.text("Elaborado por Diego de Jesús Castaño Parra, Esp. SIG — Territorial Valle del Cauca",
+      doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: "center" });
+    doc.text("Generado: " + new Date().toLocaleDateString("es-CO"), doc.internal.pageSize.width - 14, 10, { align: "right" });
+  }
+  doc.save(`Ficha_${(org.sigla || org.codigo_organizacion || "asociacion").replace(/\s+/g, "_")}.pdf`);
+}
+
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) await iniciarApp();
