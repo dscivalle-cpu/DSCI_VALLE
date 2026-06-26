@@ -10,6 +10,6 @@
 // =====================================================================
 
 window.PANEL_CONFIG = {
-  SUPABASE_URL: "https://ecaeumzdafwypmmhphdt.supabase.co",
+  SUPABASE_URL: "https://ecaeumzdafwypmmhphdt.supabase.co", 
   SUPABASE_ANON_KEY: "SUPABASE_ANON_KEY: "sb_publishable_3pxWy-5WrAGduwsEJyqSlA_-kOxrV8A",
 };
