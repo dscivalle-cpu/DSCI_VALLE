@@ -457,7 +457,13 @@ Deno.serve(async (req: Request) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
 
   let body: any;
   try {
@@ -492,8 +498,9 @@ Deno.serve(async (req: Request) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Error procesando webhook:", err);
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
+    const detalle = err instanceof Error ? err.message : String(err);
+    console.error("Error procesando webhook:", detalle, err);
+    return new Response(JSON.stringify({ ok: false, error: detalle }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
