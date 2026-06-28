@@ -364,6 +364,7 @@
         <div class="seccion-head">
           <h2 id="bpa-nombre"></h2>
           <button class="btn-pdf" id="btn-pdf-bpa">Descargar PDF BPA</button>
+          <button class="btn-pdf" id="btn-informe-radar" style="background:var(--verde-oscuro);">📊 Informe radar (PDF)</button>
         </div>
         <div class="seccion-body">
           <div id="bpa-info-predio" class="bpa-info"></div>
@@ -1003,6 +1004,7 @@ function abrirBPA(certId, orgId) {
   volverOrg.onclick = () => abrirDetalle(orgId);
   document.getElementById("bpa-nombre").textContent = "Certificación BPA — " + (cert.nombre_productor || "");
   document.getElementById("btn-pdf-bpa").onclick = () => generarPDFBPA(cert, org);
+  document.getElementById("btn-informe-radar").onclick = () => generarInformeRadar(cert, org);
 
   // Info del predio
   document.getElementById("bpa-info-predio").innerHTML = `
@@ -1127,6 +1129,155 @@ function generarPDFBPA(cert, org) {
     doc.text("Generado: " + new Date().toLocaleDateString("es-CO"), doc.internal.pageSize.width - 14, 10, { align: "right" });
   }
   doc.save(`BPA_${(cert.nombre_productor || "asociado").replace(/\s+/g, "_")}.pdf`);
+}
+
+// ---------- Informe PDF con gráfica de telaraña (radar) ----------
+// Calcula el % de cumplimiento por cada una de las 10 secciones
+function calcularPorSeccion(certId) {
+  const crits = CRITERIOS.filter(cr => cr.certificacion_id === certId);
+  const secciones = {};
+  crits.forEach(cr => {
+    // Extraer el número de sección del código (ej. "6.2" -> "6")
+    const num = String(cr.codigo_criterio).split(".")[0];
+    if (!secciones[num]) secciones[num] = { aplicables: 0, cumple: 0, nombre: cr.seccion || ("Sección " + num) };
+    if (cr.respuesta !== "na") {
+      secciones[num].aplicables++;
+      if (cr.respuesta === "cumple") secciones[num].cumple++;
+    }
+  });
+  // Ordenar por número de sección
+  return Object.keys(secciones).sort((a, b) => +a - +b).map(k => {
+    const s = secciones[k];
+    const pct = s.aplicables > 0 ? Math.round((s.cumple / s.aplicables) * 100) : 0;
+    // Nombre corto de la sección (quitar el número inicial)
+    const nombreCorto = s.nombre.replace(/^\d+\.\s*/, "").substring(0, 22);
+    return { num: k, nombre: nombreCorto, pct, cumple: s.cumple, aplicables: s.aplicables };
+  });
+}
+
+async function generarInformeRadar(cert, org) {
+  const btn = document.getElementById("btn-informe-radar");
+  btn.disabled = true; const txtOrig = btn.textContent; btn.textContent = "Generando…";
+  try {
+    const secciones = calcularPorSeccion(cert.id);
+
+    // --- Dibujar el radar en un canvas temporal con Chart.js ---
+    const canvasRadar = document.createElement("canvas");
+    canvasRadar.width = 600; canvasRadar.height = 600;
+    const chartRadar = new Chart(canvasRadar, {
+      type: "radar",
+      data: {
+        labels: secciones.map(s => s.num + ". " + s.nombre),
+        datasets: [{
+          label: "% Cumplimiento",
+          data: secciones.map(s => s.pct),
+          backgroundColor: "rgba(47,107,63,0.25)",
+          borderColor: "#2f6b3f", borderWidth: 2,
+          pointBackgroundColor: "#1d4429", pointRadius: 3,
+        }]
+      },
+      options: {
+        responsive: false, animation: false,
+        scales: { r: { min: 0, max: 100, ticks: { stepSize: 20, font: { size: 9 } }, pointLabels: { font: { size: 10 } } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // --- Dibujar las barras de las 3 categorías ---
+    const canvasBar = document.createElement("canvas");
+    canvasBar.width = 600; canvasBar.height = 300;
+    const catF = cert.fundamentales_aplicables ? Math.round(100 * cert.fundamentales_cumplidos / cert.fundamentales_aplicables) : 0;
+    const catMy = cert.mayores_aplicables ? Math.round(100 * cert.mayores_cumplidos / cert.mayores_aplicables) : 0;
+    const catMn = cert.menores_aplicables ? Math.round(100 * cert.menores_cumplidos / cert.menores_aplicables) : 0;
+    const chartBar = new Chart(canvasBar, {
+      type: "bar",
+      data: {
+        labels: ["Fundamentales", "Mayores", "Menores"],
+        datasets: [{
+          data: [catF, catMy, catMn],
+          backgroundColor: ["#c0392b", "#e0a200", "#6b7280"],
+        }]
+      },
+      options: {
+        responsive: false, animation: false,
+        scales: { y: { min: 0, max: 100, ticks: { callback: v => v + "%", font: { size: 11 } } }, x: { ticks: { font: { size: 12 } } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // Esperar un instante a que Chart.js termine de renderizar
+    await new Promise(r => setTimeout(r, 400));
+    const imgRadar = canvasRadar.toDataURL("image/png");
+    const imgBar = canvasBar.toDataURL("image/png");
+    chartRadar.destroy(); chartBar.destroy();
+
+    // --- Armar el PDF ---
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const verde = [47, 107, 63];
+    const W = doc.internal.pageSize.width;
+
+    // Encabezado
+    doc.setFillColor(...verde); doc.rect(0, 0, W, 28, "F");
+    doc.setTextColor(255); doc.setFontSize(15);
+    doc.text("Informe de Diagnóstico BPA", 14, 13);
+    doc.setFontSize(10);
+    doc.text("Buenas Prácticas Agrícolas · Resolución ICA 30021/2017", 14, 21);
+
+    // Datos del productor
+    let y = 38;
+    doc.setTextColor(40); doc.setFontSize(13);
+    doc.text(cert.nombre_productor || "", 14, y); y += 7;
+    doc.setFontSize(9); doc.setTextColor(90);
+    doc.autoTable({ startY: y, theme: "plain", styles: { fontSize: 9, cellPadding: 1 },
+      margin: { left: 14, right: 14 }, tableWidth: W - 28,
+      body: [
+        ["Asociación:", (org ? org.nombre : "—"), "Predio:", cert.nombre_predio || "—"],
+        ["Municipio/vereda:", cert.municipio_vereda || "—", "Especie:", cert.especie_cultivada || "—"],
+        ["Fecha de visita:", cert.fecha_visita_tecnica || "—", "Área producción:", (cert.area_en_produccion ?? "—") + " ha"],
+      ],
+      columnStyles: { 0: { fontStyle: "bold", textColor: [80,80,80] }, 2: { fontStyle: "bold", textColor: [80,80,80] } }
+    });
+    y = doc.lastAutoTable.finalY + 4;
+
+    // Caja de concepto técnico
+    const concepto = (cert.concepto_tecnico || "").toLowerCase();
+    let cColor = [107,114,128], cTxt = cert.concepto_tecnico || "En revisión";
+    if (concepto === "certificable") { cColor = [46,125,50]; cTxt = "CERTIFICABLE"; }
+    else if (concepto.includes("aplaz")) { cColor = [224,162,0]; cTxt = "APLAZADO (plan de mejora)"; }
+    else if (concepto.includes("no")) { cColor = [192,57,43]; cTxt = "NO CERTIFICABLE"; }
+    doc.setFillColor(...cColor); doc.roundedRect(14, y, W - 28, 11, 2, 2, "F");
+    doc.setTextColor(255); doc.setFontSize(11);
+    doc.text("Concepto técnico: " + cTxt, W / 2, y + 7.3, { align: "center" });
+    y += 18;
+
+    // Título del radar
+    doc.setTextColor(...verde); doc.setFontSize(12);
+    doc.text("Cumplimiento por sección (%)", 14, y); y += 3;
+    // Insertar radar (centrado, cuadrado)
+    const radarSize = 105;
+    doc.addImage(imgRadar, "PNG", (W - radarSize) / 2, y, radarSize, radarSize);
+    y += radarSize + 6;
+
+    // Barras de categorías
+    doc.setTextColor(...verde); doc.setFontSize(12);
+    doc.text("Cumplimiento por criticidad", 14, y); y += 3;
+    const barW = 150, barH = 60;
+    doc.addImage(imgBar, "PNG", (W - barW) / 2, y, barW, barH);
+
+    // Pie
+    doc.setFontSize(7.5); doc.setTextColor(130);
+    doc.text("Elaborado por Diego de Jesús Castaño Parra, Esp. SIG — Territorial Valle del Cauca",
+      W / 2, doc.internal.pageSize.height - 8, { align: "center" });
+    doc.text("Generado: " + new Date().toLocaleDateString("es-CO"), W - 14, doc.internal.pageSize.height - 8, { align: "right" });
+
+    doc.save(`Informe_BPA_${(cert.nombre_productor || "productor").replace(/\s+/g, "_")}.pdf`);
+  } catch (e) {
+    alert("No se pudo generar el informe. " + (e.message || e));
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = txtOrig;
+  }
 }
 
 function generarPDF(org) {
@@ -1321,8 +1472,17 @@ let borradoActual = null;
 function pedirBorrado(tipo, registro, etiqueta) {
   if (!ES_EDITOR) return;
   borradoActual = { tipo, registro };
+  let extra = "";
+  if (tipo === "asociados") {
+    // contar certificaciones de este asociado
+    const mid = registro.membresia_id || registro.id;
+    const nCerts = CERTS.filter(c => c.membresia_id === mid).length;
+    if (nCerts > 0) {
+      extra = `<br><br><span style="color:#c0392b;font-weight:600;">⚠ Este asociado tiene ${nCerts} certificación(es) BPA. También se eliminarán, junto con sus criterios.</span>`;
+    }
+  }
   document.getElementById("confirm-texto").innerHTML =
-    `¿Seguro que quieres eliminar <b>${etiqueta}</b>?<br><br>Esta acción no se puede deshacer. Quedará registrada en la auditoría.`;
+    `¿Seguro que quieres eliminar <b>${etiqueta}</b>?${extra}<br><br>Esta acción no se puede deshacer. Quedará registrada en la auditoría.`;
   confirmOverlay.classList.add("abierto");
 }
 async function ejecutarBorrado() {
@@ -1331,21 +1491,35 @@ async function ejecutarBorrado() {
   const btn = document.getElementById("confirm-borrar");
   btn.disabled = true; btn.textContent = "Eliminando…";
   try {
-    let tabla = tipo === "organizaciones" ? "organizaciones" : (tipo === "certificaciones" ? "certificaciones_ica" : "personas");
-    let id = registro.id;
     if (tipo === "asociados") {
-      // borrar la membresia (y opcionalmente la persona si no tiene mas vinculos)
       const mid = registro.membresia_id || registro.id;
-      const { error } = await sb.from("membresias").delete().eq("id", mid);
+      // 1. Borrar criterios de las certificaciones de este asociado
+      const certsDelAsoc = CERTS.filter(c => c.membresia_id === mid);
+      for (const cert of certsDelAsoc) {
+        await sb.from("criterios_cumplimiento").delete().eq("certificacion_id", cert.id);
+      }
+      // 2. Borrar las certificaciones
+      const { error: ec } = await sb.from("certificaciones_ica").delete().eq("membresia_id", mid);
+      if (ec) throw ec;
+      // 3. Borrar la membresía
+      const { error: em } = await sb.from("membresias").delete().eq("id", mid);
+      if (em) throw em;
+    } else if (tipo === "certificaciones") {
+      // Borrar criterios primero, luego la certificación
+      await sb.from("criterios_cumplimiento").delete().eq("certificacion_id", registro.id);
+      const { error } = await sb.from("certificaciones_ica").delete().eq("id", registro.id);
       if (error) throw error;
     } else {
-      const { error } = await sb.from(tabla).delete().eq("id", id);
+      const { error } = await sb.from("organizaciones").delete().eq("id", registro.id);
       if (error) throw error;
     }
     confirmOverlay.classList.remove("abierto");
     await cargarDatos(); refrescarVistaActual();
   } catch (e) {
-    alert("No se pudo eliminar. " + (e.message && e.message.includes("policy") ? "No tienes permiso de editor." : (e.message || "")));
+    let detalle = e.message || JSON.stringify(e);
+    if (e.code === "42501" || detalle.includes("policy")) detalle = "No tienes permiso de editor.";
+    else if (detalle.includes("foreign key")) detalle = "El registro tiene datos vinculados que deben borrarse primero.";
+    alert("No se pudo eliminar. " + detalle);
   } finally {
     btn.disabled = false; btn.textContent = "Sí, eliminar";
   }
