@@ -1290,7 +1290,11 @@ async function guardarEdicion() {
     setTimeout(async () => { cerrarModal(); await cargarDatos(); refrescarVistaActual(); }, 700);
   } catch (e) {
     msg.className = "modal-msg error";
-    msg.textContent = "No se pudo guardar. " + (e.message && e.message.includes("policy") ? "No tienes permiso de editor." : (e.message || ""));
+    let detalle = e.message || e.error_description || e.hint || JSON.stringify(e);
+    if (e.code) detalle = "[" + e.code + "] " + detalle;
+    if (detalle.includes("policy") || e.code === "42501") detalle = "No tienes permiso de editor sobre este dato. " + detalle;
+    msg.textContent = "No se pudo guardar. " + detalle;
+    console.error("Error al guardar:", e);
   } finally {
     btn.disabled = false; btn.textContent = "Guardar cambios";
   }
