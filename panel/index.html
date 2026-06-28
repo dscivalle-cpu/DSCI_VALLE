@@ -313,7 +313,7 @@
         </div>
         <div class="tabla-scroll">
           <table id="tabla-asoc-todos">
-            <thead><tr><th>Asociación</th><th>Asociado</th><th>Documento</th><th>Predio</th><th>Cultivo</th><th>Hectáreas</th><th>Certificación</th></tr></thead>
+            <thead><tr><th>Asociación</th><th>Asociado</th><th>Documento</th><th>Predio</th><th>Cultivo</th><th>Hectáreas</th><th>Certificación</th><th class="solo-editor">Acciones</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -695,16 +695,27 @@ function pintarCertAgrupadas() {
   const cont = document.getElementById("cert-agrupadas");
   if (!CERTS.length) { cont.innerHTML = '<div class="loading">Aún no hay certificaciones registradas.</div>'; return; }
   let html = "";
+  let globalIdx = 0;
+  window._certsFlat = [];
   ORGS.forEach(o => {
     const certs = CERTS.filter(c => c.organizacion_id === o.id);
     if (!certs.length) return;
     html += `<h3 style="color:var(--verde-oscuro);margin:1rem 0 0.5rem;">${o.sigla || o.nombre}</h3>
-      <table><thead><tr><th>Productor</th><th>Especie</th><th>Concepto</th><th>Fecha</th></tr></thead><tbody>` +
-      certs.map(c => `<tr><td>${c.nombre_productor || "—"}</td><td>${c.especie_cultivada || "—"}</td>
-        <td>${badge(c.concepto_tecnico)}</td><td>${c.fecha_visita_tecnica || "—"}</td></tr>`).join("") +
+      <table><thead><tr><th>Productor</th><th>Especie</th><th>Concepto</th><th>Fecha</th><th class="solo-editor">Acciones</th></tr></thead><tbody>` +
+      certs.map(c => {
+        const gi = globalIdx++;
+        window._certsFlat[gi] = c;
+        return `<tr><td>${c.nombre_productor || "—"}</td><td>${c.especie_cultivada || "—"}</td>
+        <td>${badge(c.concepto_tecnico)}</td><td>${c.fecha_visita_tecnica || "—"}</td>
+        <td class="col-acciones solo-editor">
+          <button class="btn-edit" data-edit-cg="${gi}">✎</button>
+          <button class="btn-del" data-del-cg="${gi}">🗑</button></td></tr>`;
+      }).join("") +
       `</tbody></table>`;
   });
   cont.innerHTML = html || '<div class="loading">Aún no hay certificaciones registradas.</div>';
+  cont.querySelectorAll("[data-edit-cg]").forEach(b => b.addEventListener("click", () => abrirEdicion("certificaciones", window._certsFlat[+b.dataset.editCg])));
+  cont.querySelectorAll("[data-del-cg]").forEach(b => b.addEventListener("click", () => { const c = window._certsFlat[+b.dataset.delCg]; pedirBorrado("certificaciones", c, "la certificación de " + c.nombre_productor); }));
 }
 
 // ---------- Tabla de todos los asociados (buscable) ----------
@@ -729,18 +740,23 @@ function renderAsocTodos() {
            (a.nombre_predio || "").toLowerCase().includes(q);
   });
   const tb = document.querySelector("#tabla-asoc-todos tbody");
-  tb.innerHTML = filas.length ? filas.map(a => {
+  tb.innerHTML = filas.length ? filas.map((a, idx) => {
     const o = orgMap[a.organizacion_id];
     const cert = certDeAsociado(a.numero_documento);
     const nombreCell = cert ? `<span class="asoc-link" data-cert="${cert.id}" data-org="${a.organizacion_id}">${a.nombre_completo || "—"}</span>` : (a.nombre_completo || "—");
+    const acciones = `<td class="col-acciones solo-editor">
+      <button class="btn-edit" data-edit-at="${idx}">✎</button>
+      <button class="btn-del" data-del-at="${idx}">🗑</button></td>`;
     return `<tr><td>${o ? (o.sigla || o.nombre) : "—"}</td><td>${nombreCell}</td>
       <td>${a.numero_documento || "—"}</td><td>${a.nombre_predio || "—"}</td>
       <td>${a.cultivo_principal || "—"}</td><td>${a.hectareas_sembradas ?? "—"}</td>
-      <td>${cert ? badge(cert.concepto_tecnico) : badge(null)}</td></tr>`;
-  }).join("") : '<tr><td colspan="7" class="loading">Sin resultados.</td></tr>';
+      <td>${cert ? badge(cert.concepto_tecnico) : badge(null)}</td>${acciones}</tr>`;
+  }).join("") : '<tr><td colspan="8" class="loading">Sin resultados.</td></tr>';
   tb.querySelectorAll(".asoc-link").forEach(el => {
     el.addEventListener("click", () => abrirBPA(el.dataset.cert, el.dataset.org));
   });
+  tb.querySelectorAll("[data-edit-at]").forEach(b => b.addEventListener("click", () => abrirEdicion("asociados", filas[+b.dataset.editAt])));
+  tb.querySelectorAll("[data-del-at]").forEach(b => b.addEventListener("click", () => { const a = filas[+b.dataset.delAt]; pedirBorrado("asociados", a, a.nombre_completo); }));
 }
 
 // ---------- Graficas ----------
