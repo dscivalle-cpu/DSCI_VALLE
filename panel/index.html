@@ -233,6 +233,35 @@
           <div class="chart-wrap"><canvas id="ch-avance"></canvas></div>
         </div>
       </div>
+
+      <div class="seccion" style="margin-top:1.5rem;">
+        <div class="seccion-head">
+          <h2>Caracterización completa de las asociaciones</h2>
+          <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center;">
+            <select id="filtro-bloque-comp">
+              <option value="gobernanza">Gobernanza y estructura</option>
+              <option value="genero_juventud">Género y juventud</option>
+              <option value="documentacion">Documentación</option>
+              <option value="finanzas">Finanzas</option>
+              <option value="produccion">Producción</option>
+              <option value="comercializacion">Comercialización</option>
+              <option value="infraestructura_digital">Infraestructura y digital</option>
+              <option value="ambiental_bpa">Ambiental / BPA</option>
+              <option value="proyectos">Proyectos</option>
+              <option value="necesidades">Necesidades y contexto</option>
+            </select>
+            <button class="btn-export" id="btn-export-caract-total">⬇ Descargar TODO (Excel/CSV)</button>
+          </div>
+        </div>
+        <div class="seccion-body" style="padding:0;">
+          <div class="tabla-scroll" style="max-height:520px; overflow:auto;">
+            <table id="tabla-comparativa">
+              <thead><tr><th>Indicador</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="vista" id="vista-asociaciones">
@@ -453,6 +482,7 @@ async function cargarDatos() {
   pintarCertAgrupadas();
   pintarTablaAsocTodos();
   pintarGraficas();
+  pintarComparativa();
 }
 
 function pintarResumen() {
@@ -542,6 +572,7 @@ function pintarFicha(org) {
   let html = `<div class="ficha-bloque"><h4>Datos generales</h4>
     <div class="ficha-item"><span class="k">NIT:</span> <span class="v">${org.nit || "—"}</span></div>
     <div class="ficha-item"><span class="k">Tipo:</span> <span class="v">${org.tipo_organizacion || "—"}</span></div>
+    <div class="ficha-item"><span class="k">Año constitución:</span> <span class="v">${org.anio_constitucion || "—"}</span></div>
     <div class="ficha-item"><span class="k">Municipio:</span> <span class="v">${org.municipio || "—"}</span></div>
     <div class="ficha-item"><span class="k">Representante:</span> <span class="v">${org.representante_legal || "—"}</span></div>
     <div class="ficha-item"><span class="k">Teléfono:</span> <span class="v">${org.telefono || "—"}</span></div>
@@ -549,14 +580,22 @@ function pintarFicha(org) {
     <div class="ficha-item"><span class="k">Veredas:</span> <span class="v">${org.veredas_presencia || "—"}</span></div>
   </div>`;
   if (c) {
+    // Los 10 bloques completos de caracterizacion, en orden
     const bloques = {
-      "Gobernanza": c.gobernanza, "Género y juventud": c.genero_juventud,
-      "Producción": c.produccion, "Comercialización": c.comercializacion,
-      "Ambiental / BPA": c.ambiental_bpa, "Finanzas": c.finanzas,
+      "Gobernanza y estructura": c.gobernanza,
+      "Género y juventud": c.genero_juventud,
+      "Documentación": c.documentacion,
+      "Finanzas": c.finanzas,
+      "Producción": c.produccion,
+      "Comercialización": c.comercializacion,
+      "Infraestructura y digital": c.infraestructura_digital,
+      "Ambiental / BPA": c.ambiental_bpa,
+      "Proyectos": c.proyectos,
+      "Necesidades y contexto": c.necesidades,
     };
     for (const [titulo, datos] of Object.entries(bloques)) {
       if (!datos || typeof datos !== "object") continue;
-      const items = Object.entries(datos).filter(([k, v]) => v !== null && v !== "").slice(0, 8);
+      const items = Object.entries(datos).filter(([k, v]) => v !== null && v !== "" && String(v).toLowerCase() !== "nan");
       if (!items.length) continue;
       html += `<div class="ficha-bloque"><h4>${titulo}</h4>` +
         items.map(([k, v]) => `<div class="ficha-item"><span class="k">${k}:</span> <span class="v">${v}</span></div>`).join("") +
@@ -719,6 +758,74 @@ function descargarCSV(filas, nombre) {
   a.href = URL.createObjectURL(blob); a.download = nombre; a.click();
 }
 
+// ---------- Tabla comparativa de caracterizacion ----------
+const NOMBRE_BLOQUE = {
+  gobernanza: "Gobernanza y estructura", genero_juventud: "Género y juventud",
+  documentacion: "Documentación", finanzas: "Finanzas", produccion: "Producción",
+  comercializacion: "Comercialización", infraestructura_digital: "Infraestructura y digital",
+  ambiental_bpa: "Ambiental / BPA", proyectos: "Proyectos", necesidades: "Necesidades y contexto",
+};
+
+function pintarComparativa() {
+  const bloque = document.getElementById("filtro-bloque-comp").value;
+  const tabla = document.getElementById("tabla-comparativa");
+  // Recolectar todos los indicadores (claves) presentes en ese bloque, en todas las orgs
+  const indicadores = [];
+  ORGS.forEach(o => {
+    const c = CARACT[o.id];
+    if (c && c[bloque] && typeof c[bloque] === "object") {
+      Object.keys(c[bloque]).forEach(k => { if (!indicadores.includes(k)) indicadores.push(k); });
+    }
+  });
+  // Encabezado: Indicador + una columna por asociacion
+  const thead = tabla.querySelector("thead tr");
+  thead.innerHTML = "<th>Indicador</th>" + ORGS.map(o => `<th>${o.sigla || o.codigo_organizacion}</th>`).join("");
+  // Filas: un indicador por fila
+  const tbody = tabla.querySelector("tbody");
+  if (!indicadores.length) { tbody.innerHTML = `<tr><td colspan="${ORGS.length + 1}" class="loading">Sin datos en este bloque.</td></tr>`; return; }
+  tbody.innerHTML = indicadores.map(ind => {
+    const celdas = ORGS.map(o => {
+      const c = CARACT[o.id];
+      let v = (c && c[bloque]) ? c[bloque][ind] : null;
+      if (v === null || v === undefined || String(v).toLowerCase() === "nan") v = "—";
+      return `<td style="font-size:0.78rem">${v}</td>`;
+    }).join("");
+    return `<tr><td style="font-size:0.78rem; font-weight:600; min-width:240px;">${ind}</td>${celdas}</tr>`;
+  }).join("");
+}
+
+function exportarCaractTotal() {
+  // Excel-friendly CSV: una hoja con todo. Filas = indicadores de todos los bloques; columnas = asociaciones
+  const filas = [];
+  const encabezado = ["Bloque", "Indicador", ...ORGS.map(o => o.sigla || o.codigo_organizacion)];
+  filas.push(encabezado);
+  // Datos generales primero
+  const generales = ["nit", "tipo_organizacion", "anio_constitucion", "municipio", "veredas_presencia", "representante_legal", "telefono", "correo_electronico"];
+  const lblGen = { nit: "NIT", tipo_organizacion: "Tipo", anio_constitucion: "Año constitución", municipio: "Municipio", veredas_presencia: "Veredas", representante_legal: "Representante legal", telefono: "Teléfono", correo_electronico: "Correo" };
+  generales.forEach(g => {
+    filas.push(["Datos generales", lblGen[g], ...ORGS.map(o => { const v = o[g]; return (v === null || v === undefined) ? "" : v; })]);
+  });
+  // Cada bloque
+  Object.keys(NOMBRE_BLOQUE).forEach(bloque => {
+    const indicadores = [];
+    ORGS.forEach(o => {
+      const c = CARACT[o.id];
+      if (c && c[bloque] && typeof c[bloque] === "object") {
+        Object.keys(c[bloque]).forEach(k => { if (!indicadores.includes(k)) indicadores.push(k); });
+      }
+    });
+    indicadores.forEach(ind => {
+      filas.push([NOMBRE_BLOQUE[bloque], ind, ...ORGS.map(o => {
+        const c = CARACT[o.id];
+        let v = (c && c[bloque]) ? c[bloque][ind] : "";
+        if (v === null || v === undefined || String(v).toLowerCase() === "nan") v = "";
+        return v;
+      })]);
+    });
+  });
+  descargarCSV(filas, "caracterizacion_completa_asociaciones.csv");
+}
+
 // Botones de descarga de cada grafica
 document.querySelectorAll(".btn-mini[data-dl]").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -738,6 +845,10 @@ document.getElementById("btn-export-asoc-todos").addEventListener("click", () =>
   });
   descargarCSV(filas, "asociados.csv");
 });
+
+// Tabla comparativa: cambio de bloque y descarga total
+document.getElementById("filtro-bloque-comp").addEventListener("change", pintarComparativa);
+document.getElementById("btn-export-caract-total").addEventListener("click", exportarCaractTotal);
 
 function initMapaGeneral() {
   if (mapaGeneral) { mapaGeneral.invalidateSize(); return; }
