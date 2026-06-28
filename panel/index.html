@@ -160,6 +160,38 @@
   .asoc-link:hover { text-decoration: underline; }
 
   @media (max-width: 600px) { .container { padding: 1rem; } }
+
+  /* Edición / modales */
+  .btn-edit, .btn-del { font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 5px; cursor: pointer; border: 1px solid; margin-left: 0.3rem; }
+  .btn-edit { background: #fff; color: var(--verde-cultivo); border-color: var(--verde-cultivo); }
+  .btn-edit:hover { background: var(--verde-claro); }
+  .btn-del { background: #fff; color: var(--sem-no); border-color: var(--sem-no); }
+  .btn-del:hover { background: #fdecea; }
+  /* Los controles de edición solo se ven en modo editor */
+  .solo-editor { display: none; }
+  body.modo-editor .solo-editor { display: inline-block; }
+  .col-acciones { white-space: nowrap; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.abierto { display: flex; }
+  .modal-card { background: #fff; border-radius: 12px; width: min(94vw, 560px); max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .modal-head { padding: 1rem 1.3rem; border-bottom: 1px solid var(--gris-borde); display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h3 { color: var(--verde-oscuro); font-size: 1.05rem; }
+  .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #888; }
+  .modal-body { padding: 1.3rem; overflow-y: auto; }
+  .modal-foot { padding: 1rem 1.3rem; border-top: 1px solid var(--gris-borde); display: flex; justify-content: flex-end; gap: 0.6rem; }
+  .campo-edit { margin-bottom: 0.9rem; }
+  .campo-edit label { display: block; font-size: 0.78rem; font-weight: 600; color: #555; margin-bottom: 0.3rem; }
+  .campo-edit input, .campo-edit select, .campo-edit textarea { width: 100%; padding: 0.55rem 0.7rem; border: 1.5px solid var(--gris-borde); border-radius: 7px; font-size: 0.88rem; font-family: inherit; }
+  .campo-edit input:focus, .campo-edit select:focus, .campo-edit textarea:focus { outline: none; border-color: var(--verde-cultivo); }
+  .btn-guardar { background: var(--verde-cultivo); color: #fff; border: none; padding: 0.6rem 1.1rem; border-radius: 7px; font-weight: 600; cursor: pointer; }
+  .btn-guardar:hover { background: var(--verde-oscuro); }
+  .btn-guardar:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-cancelar { background: #fff; border: 1.5px solid var(--gris-borde); padding: 0.6rem 1.1rem; border-radius: 7px; cursor: pointer; }
+  .btn-borrar { background: var(--sem-no); color: #fff; border: none; padding: 0.6rem 1.1rem; border-radius: 7px; font-weight: 600; cursor: pointer; }
+  .modal-msg { font-size: 0.82rem; padding: 0.5rem 0.7rem; border-radius: 6px; margin-bottom: 0.8rem; display: none; }
+  .modal-msg.error { background: #fdecea; color: var(--sem-no); display: block; }
+  .modal-msg.ok { background: #e8f5e9; color: #1b5e20; display: block; }
 </style>
 </head>
 <body>
@@ -293,7 +325,10 @@
       <div class="seccion">
         <div class="seccion-head">
           <h2 id="detalle-nombre"></h2>
-          <button class="btn-pdf" id="btn-pdf-org">Descargar PDF</button>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn-edit solo-editor" id="btn-edit-org" style="font-size:0.85rem; padding:0.5rem 0.9rem;">✎ Editar organización</button>
+            <button class="btn-pdf" id="btn-pdf-org">Descargar PDF</button>
+          </div>
         </div>
         <div class="seccion-body"><div class="ficha-grid" id="ficha-caracterizacion"></div></div>
       </div>
@@ -301,7 +336,7 @@
         <div class="seccion-head"><h2>Asociados</h2></div>
         <div class="tabla-scroll">
           <table id="tabla-asoc-org">
-            <thead><tr><th>Asociado</th><th>Documento</th><th>Predio</th><th>Cultivo principal</th><th>Hectáreas</th><th>Certificación</th></tr></thead>
+            <thead><tr><th>Asociado</th><th>Documento</th><th>Predio</th><th>Cultivo principal</th><th>Hectáreas</th><th>Certificación</th><th class="solo-editor">Acciones</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -310,7 +345,7 @@
         <div class="seccion-head"><h2>Procesos de certificación</h2></div>
         <div class="tabla-scroll">
           <table id="tabla-cert-org">
-            <thead><tr><th>Productor</th><th>Especie</th><th>Fund.</th><th>May.</th><th>Men.</th><th>Concepto</th><th>Fecha</th></tr></thead>
+            <thead><tr><th>Productor</th><th>Especie</th><th>Fund.</th><th>May.</th><th>Men.</th><th>Concepto</th><th>Fecha</th><th class="solo-editor">Acciones</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -375,6 +410,33 @@
   <footer class="pie">
     Elaborado por Diego de Jesús Castaño Parra, Esp. SIG — Territorial Valle del Cauca
   </footer>
+
+  <!-- MODAL DE EDICIÓN -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modal-titulo">Editar</h3>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot">
+        <button class="btn-cancelar" id="modal-cancelar">Cancelar</button>
+        <button class="btn-guardar" id="modal-guardar">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMACIÓN DE BORRADO -->
+  <div id="confirm-overlay" class="modal-overlay">
+    <div class="modal-card" style="max-width:420px;">
+      <div class="modal-head"><h3>Confirmar eliminación</h3></div>
+      <div class="modal-body"><p id="confirm-texto" style="font-size:0.9rem;"></p></div>
+      <div class="modal-foot">
+        <button class="btn-cancelar" id="confirm-cancelar">Cancelar</button>
+        <button class="btn-borrar" id="confirm-borrar">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="config.js"></script>
@@ -460,12 +522,23 @@ function mostrarVista(v) {
   else if (v === "certificaciones") document.getElementById("vista-certificaciones").classList.add("active");
 }
 
+let ES_EDITOR = false;
+
 async function iniciarApp() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
   document.getElementById("user-email").textContent = user.email;
   loginScreen.style.display = "none";
   appDiv.style.display = "block";
+  // Detectar si el usuario es editor/admin (lee su propio rol)
+  try {
+    const { data: rol } = await sb.from("usuarios_roles").select("rol").eq("user_id", user.id).maybeSingle();
+    ES_EDITOR = rol && (rol.rol === "editor" || rol.rol === "admin");
+  } catch (e) { ES_EDITOR = false; }
+  if (ES_EDITOR) {
+    document.getElementById("user-email").textContent = user.email + " · editor";
+    document.body.classList.add("modo-editor");
+  }
   await cargarDatos();
 }
 
@@ -523,6 +596,7 @@ function pintarGridOrgs() {
 function abrirDetalle(orgId) {
   const org = ORGS.find(o => o.id === orgId);
   if (!org) return;
+  window._orgActual = orgId;
   document.querySelectorAll(".vista").forEach(x => x.classList.remove("active"));
   document.getElementById("vista-detalle").classList.add("active");
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -530,33 +604,45 @@ function abrirDetalle(orgId) {
   document.getElementById("bc-org").textContent = org.sigla || org.nombre;
   document.getElementById("detalle-nombre").textContent = org.nombre;
   document.getElementById("btn-pdf-org").onclick = () => generarPDF(org);
+  // Botón editar organización (solo editor)
+  const btnEditOrg = document.getElementById("btn-edit-org");
+  if (btnEditOrg) btnEditOrg.onclick = () => abrirEdicion("organizaciones", org);
   pintarFicha(org);
 
   const asocs = ASOCS.filter(a => a.organizacion_id === orgId);
   const tb = document.querySelector("#tabla-asoc-org tbody");
-  tb.innerHTML = asocs.length ? asocs.map(a => {
+  tb.innerHTML = asocs.length ? asocs.map((a, idx) => {
     const cert = certDeAsociado(a.numero_documento);
     const nombreCell = cert
       ? `<span class="asoc-link" data-cert="${cert.id}">${a.nombre_completo || "—"}</span>`
       : (a.nombre_completo || "—");
+    const acciones = `<td class="col-acciones solo-editor">
+      <button class="btn-edit" data-edit-asoc="${idx}">✎</button>
+      <button class="btn-del" data-del-asoc="${idx}">🗑</button></td>`;
     return `<tr><td>${nombreCell}</td><td>${a.numero_documento || "—"}</td>
       <td>${a.nombre_predio || "—"}</td><td>${a.cultivo_principal || "—"}</td>
-      <td>${a.hectareas_sembradas ?? "—"}</td><td>${cert ? badge(cert.concepto_tecnico) : badge(null)}</td></tr>`;
-  }).join("") : '<tr><td colspan="6" class="loading">Sin asociados registrados.</td></tr>';
-  // activar clic en nombres con certificacion
+      <td>${a.hectareas_sembradas ?? "—"}</td><td>${cert ? badge(cert.concepto_tecnico) : badge(null)}</td>${acciones}</tr>`;
+  }).join("") : '<tr><td colspan="7" class="loading">Sin asociados registrados.</td></tr>';
   tb.querySelectorAll(".asoc-link").forEach(el => {
     el.addEventListener("click", () => abrirBPA(el.dataset.cert, orgId));
   });
+  tb.querySelectorAll("[data-edit-asoc]").forEach(b => b.addEventListener("click", () => abrirEdicion("asociados", asocs[+b.dataset.editAsoc])));
+  tb.querySelectorAll("[data-del-asoc]").forEach(b => b.addEventListener("click", () => { const a = asocs[+b.dataset.delAsoc]; pedirBorrado("asociados", a, a.nombre_completo); }));
 
   const certs = CERTS.filter(c => c.organizacion_id === orgId);
   const tc = document.querySelector("#tabla-cert-org tbody");
-  tc.innerHTML = certs.length ? certs.map(c => `<tr>
+  tc.innerHTML = certs.length ? certs.map((c, idx) => `<tr>
     <td>${c.nombre_productor || "—"}</td><td>${c.especie_cultivada || "—"}</td>
     <td>${c.fundamentales_cumplidos ?? "—"}/${c.fundamentales_aplicables ?? "—"}</td>
     <td>${c.mayores_cumplidos ?? "—"}/${c.mayores_aplicables ?? "—"}</td>
     <td>${c.menores_cumplidos ?? "—"}/${c.menores_aplicables ?? "—"}</td>
-    <td>${badge(c.concepto_tecnico)}</td><td>${c.fecha_visita_tecnica || "—"}</td></tr>`).join("")
-    : '<tr><td colspan="7" class="loading">Sin procesos de certificación.</td></tr>';
+    <td>${badge(c.concepto_tecnico)}</td><td>${c.fecha_visita_tecnica || "—"}</td>
+    <td class="col-acciones solo-editor">
+      <button class="btn-edit" data-edit-cert="${idx}">✎</button>
+      <button class="btn-del" data-del-cert="${idx}">🗑</button></td></tr>`).join("")
+    : '<tr><td colspan="8" class="loading">Sin procesos de certificación.</td></tr>';
+  tc.querySelectorAll("[data-edit-cert]").forEach(b => b.addEventListener("click", () => abrirEdicion("certificaciones", certs[+b.dataset.editCert])));
+  tc.querySelectorAll("[data-del-cert]").forEach(b => b.addEventListener("click", () => { const c = certs[+b.dataset.delCert]; pedirBorrado("certificaciones", c, "la certificación de " + c.nombre_productor); }));
 
   window.scrollTo(0, 0);
 }
@@ -1088,6 +1174,177 @@ function generarPDF(org) {
   }
   doc.save(`Ficha_${(org.sigla || org.codigo_organizacion || "asociacion").replace(/\s+/g, "_")}.pdf`);
 }
+
+// =====================================================================
+// EDICIÓN Y BORRADO (solo editores)
+// =====================================================================
+// Definición de campos editables por tabla
+const CAMPOS_EDIT = {
+  organizaciones: {
+    titulo: "Editar organización", tabla: "organizaciones",
+    campos: [
+      { k: "nombre", lbl: "Nombre", tipo: "text" },
+      { k: "sigla", lbl: "Sigla", tipo: "text" },
+      { k: "nit", lbl: "NIT", tipo: "text" },
+      { k: "tipo_organizacion", lbl: "Tipo", tipo: "text" },
+      { k: "municipio", lbl: "Municipio", tipo: "text" },
+      { k: "representante_legal", lbl: "Representante legal", tipo: "text" },
+      { k: "telefono", lbl: "Teléfono", tipo: "text" },
+      { k: "correo_electronico", lbl: "Correo", tipo: "text" },
+      { k: "veredas_presencia", lbl: "Veredas", tipo: "text" },
+    ],
+  },
+  asociados: {
+    titulo: "Editar asociado", tabla: "personas", // los datos de persona van a 'personas', predio/cultivo a 'membresias'
+    campos: [
+      { k: "nombre_completo", lbl: "Nombre completo", tipo: "text", destino: "personas" },
+      { k: "numero_documento", lbl: "Cédula / Documento", tipo: "text", destino: "personas" },
+      { k: "nombre_predio", lbl: "Predio", tipo: "text", destino: "membresias" },
+      { k: "cultivo_principal", lbl: "Cultivo principal", tipo: "text", destino: "membresias" },
+      { k: "hectareas_sembradas", lbl: "Hectáreas", tipo: "number", destino: "membresias" },
+    ],
+  },
+  certificaciones: {
+    titulo: "Editar certificación", tabla: "certificaciones_ica",
+    campos: [
+      { k: "nombre_productor", lbl: "Productor", tipo: "text" },
+      { k: "nombre_predio", lbl: "Predio", tipo: "text" },
+      { k: "municipio_vereda", lbl: "Municipio / vereda", tipo: "text" },
+      { k: "especie_cultivada", lbl: "Especie", tipo: "text" },
+      { k: "area_en_produccion", lbl: "Área en producción (ha)", tipo: "number" },
+      { k: "fecha_visita_tecnica", lbl: "Fecha de visita", tipo: "date" },
+      { k: "concepto_tecnico", lbl: "Concepto técnico", tipo: "select", opciones: ["certificable", "aplazado", "no_certificable", "en_revision"] },
+      { k: "observaciones_generales", lbl: "Observaciones", tipo: "textarea" },
+    ],
+  },
+};
+
+const modalOverlay = document.getElementById("modal-overlay");
+const confirmOverlay = document.getElementById("confirm-overlay");
+let edicionActual = null; // { tipo, registro }
+
+function abrirEdicion(tipo, registro) {
+  if (!ES_EDITOR) return;
+  const def = CAMPOS_EDIT[tipo];
+  edicionActual = { tipo, registro, def };
+  document.getElementById("modal-titulo").textContent = def.titulo;
+  const body = document.getElementById("modal-body");
+  body.innerHTML = `<div class="modal-msg" id="modal-msg"></div>` + def.campos.map(c => {
+    const val = registro[c.k] ?? "";
+    if (c.tipo === "select") {
+      return `<div class="campo-edit"><label>${c.lbl}</label><select data-k="${c.k}">${c.opciones.map(o => `<option value="${o}" ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select></div>`;
+    }
+    if (c.tipo === "textarea") {
+      return `<div class="campo-edit"><label>${c.lbl}</label><textarea data-k="${c.k}" rows="3">${val}</textarea></div>`;
+    }
+    return `<div class="campo-edit"><label>${c.lbl}</label><input type="${c.tipo}" data-k="${c.k}" value="${val}"></div>`;
+  }).join("");
+  modalOverlay.classList.add("abierto");
+}
+
+async function guardarEdicion() {
+  if (!edicionActual) return;
+  const { tipo, registro, def } = edicionActual;
+  const btn = document.getElementById("modal-guardar");
+  const msg = document.getElementById("modal-msg");
+  msg.className = "modal-msg";
+  btn.disabled = true; btn.textContent = "Guardando…";
+
+  // Recolectar valores del formulario
+  const inputs = document.querySelectorAll("#modal-body [data-k]");
+  const valores = {};
+  inputs.forEach(i => { valores[i.dataset.k] = i.value; });
+
+  try {
+    if (tipo === "asociados") {
+      // Separar lo que va a personas y lo que va a membresias
+      const datosPersona = {}, datosMembresia = {};
+      def.campos.forEach(c => {
+        let v = valores[c.k];
+        if (c.tipo === "number") v = v === "" ? null : Number(v);
+        if (c.destino === "personas") datosPersona[c.k] = v;
+        else datosMembresia[c.k] = v;
+      });
+      // Actualizar persona (por id de persona)
+      if (registro.persona_id) {
+        const { error: e1 } = await sb.from("personas").update(datosPersona).eq("id", registro.persona_id);
+        if (e1) throw e1;
+      }
+      // Actualizar membresia (por id de membresia)
+      if (registro.membresia_id || registro.id) {
+        const mid = registro.membresia_id || registro.id;
+        const { error: e2 } = await sb.from("membresias").update(datosMembresia).eq("id", mid);
+        if (e2) throw e2;
+      }
+    } else {
+      const datos = {};
+      def.campos.forEach(c => {
+        let v = valores[c.k];
+        if (c.tipo === "number") v = v === "" ? null : Number(v);
+        datos[c.k] = v;
+      });
+      const { error } = await sb.from(def.tabla).update(datos).eq("id", registro.id);
+      if (error) throw error;
+    }
+    msg.className = "modal-msg ok"; msg.textContent = "✔ Cambios guardados.";
+    setTimeout(async () => { cerrarModal(); await cargarDatos(); refrescarVistaActual(); }, 700);
+  } catch (e) {
+    msg.className = "modal-msg error";
+    msg.textContent = "No se pudo guardar. " + (e.message && e.message.includes("policy") ? "No tienes permiso de editor." : (e.message || ""));
+  } finally {
+    btn.disabled = false; btn.textContent = "Guardar cambios";
+  }
+}
+
+// Borrado
+let borradoActual = null;
+function pedirBorrado(tipo, registro, etiqueta) {
+  if (!ES_EDITOR) return;
+  borradoActual = { tipo, registro };
+  document.getElementById("confirm-texto").innerHTML =
+    `¿Seguro que quieres eliminar <b>${etiqueta}</b>?<br><br>Esta acción no se puede deshacer. Quedará registrada en la auditoría.`;
+  confirmOverlay.classList.add("abierto");
+}
+async function ejecutarBorrado() {
+  if (!borradoActual) return;
+  const { tipo, registro } = borradoActual;
+  const btn = document.getElementById("confirm-borrar");
+  btn.disabled = true; btn.textContent = "Eliminando…";
+  try {
+    let tabla = tipo === "organizaciones" ? "organizaciones" : (tipo === "certificaciones" ? "certificaciones_ica" : "personas");
+    let id = registro.id;
+    if (tipo === "asociados") {
+      // borrar la membresia (y opcionalmente la persona si no tiene mas vinculos)
+      const mid = registro.membresia_id || registro.id;
+      const { error } = await sb.from("membresias").delete().eq("id", mid);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from(tabla).delete().eq("id", id);
+      if (error) throw error;
+    }
+    confirmOverlay.classList.remove("abierto");
+    await cargarDatos(); refrescarVistaActual();
+  } catch (e) {
+    alert("No se pudo eliminar. " + (e.message && e.message.includes("policy") ? "No tienes permiso de editor." : (e.message || "")));
+  } finally {
+    btn.disabled = false; btn.textContent = "Sí, eliminar";
+  }
+}
+
+function refrescarVistaActual() {
+  // Repinta la vista de detalle si está abierta
+  const detalle = document.getElementById("vista-detalle");
+  if (detalle.classList.contains("active") && window._orgActual) abrirDetalle(window._orgActual);
+}
+
+function cerrarModal() { modalOverlay.classList.remove("abierto"); edicionActual = null; }
+document.getElementById("modal-close").addEventListener("click", cerrarModal);
+document.getElementById("modal-cancelar").addEventListener("click", cerrarModal);
+document.getElementById("modal-guardar").addEventListener("click", guardarEdicion);
+document.getElementById("confirm-cancelar").addEventListener("click", () => confirmOverlay.classList.remove("abierto"));
+document.getElementById("confirm-borrar").addEventListener("click", ejecutarBorrado);
+modalOverlay.addEventListener("click", e => { if (e.target === modalOverlay) cerrarModal(); });
+confirmOverlay.addEventListener("click", e => { if (e.target === confirmOverlay) confirmOverlay.classList.remove("abierto"); });
 
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
